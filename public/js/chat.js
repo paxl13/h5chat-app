@@ -5,6 +5,7 @@ let currentUser = {
   room: '',
 };
 
+// DOM Elements
 const loginModal = document.getElementById('loginModal');
 const chatContainer = document.getElementById('chatContainer');
 const loginForm = document.getElementById('loginForm');
@@ -19,10 +20,45 @@ const currentUsername = document.getElementById('currentUsername');
 const leaveBtn = document.getElementById('leaveBtn');
 const typingIndicator = document.getElementById('typingIndicator');
 
+// Mobile Elements
+const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+const sidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+const mobileUserCount = document.getElementById('mobileUserCount');
+
 let typingTimer;
 let isTyping = false;
 const typingUsers = new Set();
+let onlineUsersCount = 0;
 
+// Mobile Sidebar Functions
+function openSidebar() {
+  sidebar.classList.add('sidebar-open');
+  sidebarOverlay.classList.remove('hidden');
+  document.body.classList.add('sidebar-open');
+}
+
+function closeSidebar() {
+  sidebar.classList.remove('sidebar-open');
+  sidebarOverlay.classList.add('hidden');
+  document.body.classList.remove('sidebar-open');
+}
+
+// Mobile Menu Event Listeners
+if (mobileMenuBtn) {
+  mobileMenuBtn.addEventListener('click', openSidebar);
+}
+
+if (closeSidebarBtn) {
+  closeSidebarBtn.addEventListener('click', closeSidebar);
+}
+
+if (sidebarOverlay) {
+  sidebarOverlay.addEventListener('click', closeSidebar);
+}
+
+// Form Event Listeners
 loginForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const username = usernameInput.value.trim();
@@ -41,6 +77,9 @@ messageForm.addEventListener('submit', (e) => {
     socket.emit('message', { text });
     messageInput.value = '';
     stopTyping();
+    
+    // Focus back on input for mobile
+    messageInput.focus();
   }
 });
 
@@ -52,6 +91,11 @@ messageInput.addEventListener('input', () => {
 
   clearTimeout(typingTimer);
   typingTimer = setTimeout(stopTyping, 1000);
+});
+
+// Prevent zoom on mobile when focusing input
+messageInput.addEventListener('touchstart', (e) => {
+  e.target.style.fontSize = '16px';
 });
 
 function stopTyping() {
@@ -68,6 +112,7 @@ leaveBtn.addEventListener('click', () => {
   }
 });
 
+// Socket Event Handlers
 socket.on('joinedRoom', (data) => {
   currentUser.username = data.username;
   currentUser.room = data.room;
@@ -85,6 +130,11 @@ socket.on('joinedRoom', (data) => {
   }
 
   addSystemMessage(`You joined the room "${data.room}" as "${data.username}"`);
+  
+  // Focus message input on join
+  setTimeout(() => {
+    messageInput.focus();
+  }, 100);
 });
 
 socket.on('message', (message) => {
@@ -112,6 +162,7 @@ socket.on('userTyping', (data) => {
   updateTypingIndicator();
 });
 
+// UI Functions
 function addMessage(message) {
   const messageElement = document.createElement('div');
   const isOwnMessage = message.username === currentUser.username;
@@ -124,23 +175,23 @@ function addMessage(message) {
   });
 
   const messageBubble = `
-        <div class="max-w-xs lg:max-w-md">
-            <div class="flex ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'} items-end gap-2 mb-1">
-                <span class="text-xs font-semibold ${isOwnMessage ? 'text-purple-600' : 'text-gray-600'}">
-                    ${escapeHtml(message.username)}
-                </span>
-                <span class="text-xs text-gray-400">${time}</span>
-            </div>
-            <div class="${
-              isOwnMessage
-                ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
-                : 'bg-white border border-gray-200 text-gray-800'
-            } 
-                px-4 py-2 rounded-2xl shadow-sm break-words">
-                ${escapeHtml(message.text)}
-            </div>
-        </div>
-    `;
+    <div class="max-w-[85%] sm:max-w-xs lg:max-w-md">
+      <div class="flex ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'} items-end gap-1 sm:gap-2 mb-1">
+        <span class="text-xs font-semibold ${isOwnMessage ? 'text-purple-600' : 'text-gray-600'}">
+          ${escapeHtml(message.username)}
+        </span>
+        <span class="text-xs text-gray-400">${time}</span>
+      </div>
+      <div class="${
+        isOwnMessage
+          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
+          : 'bg-white border border-gray-200 text-gray-800'
+      } 
+        px-3 sm:px-4 py-2 rounded-2xl shadow-sm break-words text-sm sm:text-base">
+        ${escapeHtml(message.text)}
+      </div>
+    </div>
+  `;
 
   messageElement.innerHTML = messageBubble;
   messagesList.appendChild(messageElement);
@@ -157,6 +208,13 @@ function addSystemMessage(text) {
 
 function updateUsersList(users) {
   usersList.innerHTML = '';
+  onlineUsersCount = users.length;
+  
+  // Update mobile user count
+  if (mobileUserCount) {
+    mobileUserCount.querySelector('span').textContent = onlineUsersCount;
+  }
+  
   users.forEach((user) => {
     const li = document.createElement('li');
     const isCurrentUser = user.username === currentUser.username;
@@ -197,3 +255,21 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
+
+// Handle viewport resize and orientation change
+function handleResize() {
+  // Close sidebar on desktop view
+  if (window.innerWidth >= 1024) {
+    closeSidebar();
+  }
+  
+  // Adjust viewport height for mobile browsers
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
+window.addEventListener('resize', handleResize);
+window.addEventListener('orientationchange', handleResize);
+
+// Initial setup
+handleResize();

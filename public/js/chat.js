@@ -268,8 +268,86 @@ function handleResize() {
   document.documentElement.style.setProperty('--vh', `${vh}px`);
 }
 
+// Visual Viewport API for handling keyboard on Android
+function handleVisualViewport() {
+  if (!window.visualViewport) {
+    return;
+  }
+  
+  const viewport = window.visualViewport;
+  const threshold = 150; // Keyboard is likely open if viewport shrinks by more than this
+  
+  function updateViewport() {
+    const hasKeyboard = window.innerHeight - viewport.height > threshold;
+    const keyboardHeight = hasKeyboard ? window.innerHeight - viewport.height : 0;
+    
+    document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
+    
+    if (hasKeyboard) {
+      document.body.classList.add('keyboard-open');
+      
+      // Scroll message container to bottom when keyboard opens
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    } else {
+      document.body.classList.remove('keyboard-open');
+    }
+    
+    // Update chat main height
+    const chatMain = document.getElementById('chatMain');
+    if (chatMain && window.innerWidth <= 1024) {
+      if (hasKeyboard) {
+        chatMain.style.height = `${viewport.height}px`;
+      } else {
+        chatMain.style.height = '';
+      }
+    }
+  }
+  
+  viewport.addEventListener('resize', updateViewport);
+  viewport.addEventListener('scroll', updateViewport);
+  
+  // Initial check
+  updateViewport();
+}
+
+// Fallback for browsers without Visual Viewport API
+function handleInputFocus() {
+  const inputs = [messageInput, usernameInput, roomInput];
+  
+  inputs.forEach(input => {
+    if (!input) return;
+    
+    input.addEventListener('focus', () => {
+      if (window.innerWidth <= 1024) {
+        // Estimate keyboard height (usually 40% of screen on mobile)
+        setTimeout(() => {
+          const estimatedKeyboardHeight = window.innerHeight * 0.4;
+          document.documentElement.style.setProperty('--keyboard-height', `${estimatedKeyboardHeight}px`);
+          document.body.classList.add('keyboard-open');
+          scrollToBottom();
+        }, 300);
+      }
+    });
+    
+    input.addEventListener('blur', () => {
+      setTimeout(() => {
+        document.documentElement.style.setProperty('--keyboard-height', '0px');
+        document.body.classList.remove('keyboard-open');
+      }, 100);
+    });
+  });
+}
+
 window.addEventListener('resize', handleResize);
 window.addEventListener('orientationchange', handleResize);
 
-// Initial setup
+// Initialize viewport handling
 handleResize();
+handleVisualViewport();
+
+// Fallback for older browsers
+if (!window.visualViewport) {
+  handleInputFocus();
+}

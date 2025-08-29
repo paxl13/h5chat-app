@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>H5 Chat App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -120,7 +120,7 @@
           </div>
         </aside>
 
-        <main class="flex-1 flex flex-col w-full">
+        <main id="chatMain" class="flex-1 flex flex-col w-full">
           <div
             class="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center pl-16 lg:pl-6"
           >
@@ -142,6 +142,7 @@
           <div
             id="messagesContainer"
             class="flex-1 overflow-y-auto p-3 sm:p-4 bg-gray-50"
+            style="height: calc(100% - 120px);"
           >
             <div id="messagesList" class="space-y-2 sm:space-y-3"></div>
           </div>
@@ -151,7 +152,7 @@
             class="hidden px-4 sm:px-6 py-2 bg-gray-100 text-gray-600 text-sm italic"
           ></div>
 
-          <div class="p-3 sm:p-4 bg-white border-t border-gray-200">
+          <div id="messageInputContainer" class="p-3 sm:p-4 bg-white border-t border-gray-200">
             <form id="messageForm" class="flex gap-2">
               <input
                 type="text"
@@ -174,6 +175,11 @@
     </div>
 
     <style>
+      :root {
+        --keyboard-height: 0px;
+        --vh: 1vh;
+      }
+      
       .modal.active {
         display: flex;
       }
@@ -184,10 +190,17 @@
         display: flex;
       }
       
-      /* Ensure proper mobile viewport height */
-      @supports (-webkit-touch-callout: none) {
+      /* Dynamic height handling for mobile */
+      @supports (height: 100dvh) {
         .h-screen {
-          height: -webkit-fill-available;
+          height: 100dvh;
+        }
+      }
+      
+      /* Fallback for older browsers */
+      @supports not (height: 100dvh) {
+        .h-screen {
+          height: calc(var(--vh, 1vh) * 100);
         }
       }
       
@@ -199,6 +212,29 @@
       /* Prevent body scroll when sidebar is open on mobile */
       body.sidebar-open {
         overflow: hidden;
+      }
+      
+      /* Handle keyboard on mobile */
+      @media (max-width: 1024px) {
+        #chatMain {
+          height: calc(100vh - var(--keyboard-height));
+          transition: height 0.3s ease;
+        }
+        
+        #messagesContainer {
+          height: calc(100% - 120px) !important;
+        }
+        
+        body.keyboard-open #chatMain {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+        }
+        
+        body.keyboard-open #messagesContainer {
+          height: calc(100vh - var(--keyboard-height) - 120px) !important;
+        }
       }
     </style>
 
